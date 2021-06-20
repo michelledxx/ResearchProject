@@ -23,3 +23,10 @@ class Forecast(models.Model):
     fmain = models.TextField(max_length=50)
     fwind_speed = models.TextField(max_length=50)
     pressure = models.TextField(max_length=50)
+
+
+class AA_Road_Report(models.Model):
+    lat = models.FloatField()
+    long = models.FloatField()
+    location = models.TextField()
+    report = models.TextField()
