@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en"></html>
+<head>
+    <title>Home</title>
+
+    <script>
+        var map;
+        var directionsService;
+        var directionsRenderer;
+        // Map initialization
+        function initMap() {
+            var mapProp = {
+                // map coordinates
+                center: new google.maps.LatLng(53.3472, -6.2592),
+                zoom: 12,
+            };
+            map = new google.maps.Map(document.getElementById("map"), mapProp);
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer();
+            // Bus stop option initialization
+            initBusStops();
+            iniEventListener();
+            loadPlanFromJson();
+        }
+    </script>
+
+    <script>
+        var busStops;
+        function initBusStops(){
+            // read bus station data from server
+            fetch("busstation", {
+                method:'GET'}).then(function(response) {
+                    return response.json();
+                })
+            .then(function(busData) {
+                // create bus station option 
+                var startStop = document.getElementById('start_stop');
+                var endStop = document.getElementById('end_stop');
+                var str= "";
+                var count = 0;
+                busData.forEach(element => {
+                    // log shows all bus station 
+                    // console.log(element.stop_name);
+                    var startOption=document.createElement("option")
+                    startOption.setAttribute("value",element.stop_name);
+                    startStop.appendChild(startOption);
+                    var endOption=document.createElement("option")
+                    endOption.setAttribute("value",element.stop_name);
+                    endStop.appendChild(endOption);
+                });
+                console.log(busData);
+            });
+        }
+    </script>
+
+    <script>
+        function iniEventListener(){
+            var submit = document.getElementById("submit").addEventListener("click", markBusRoute);
+            var save = document.getElementById("save").addEventListener("click", savePlanToJson);
+        }
+    </script>
+
+    <script>
+        function saveBusRoute(){
+            var start = document.forms["bus_stop"]["start_stop"].value;
+            console.log(start);
+            var end = document.forms["bus_stop"]["end_stop"].value;
+            console.log(end);
+            let url = 'route/'+'?start_stop='+start+'&end_stop='+end;
+            // console.log(url);
+            fetch(url, {
+                method:'GET'}).then(function(response) {
+                    return response.json();
+                })
+            .then(function(routeDate){
+                console.log(routeDate);
+                var start_position = new google.maps.LatLng(routeDate[0].stop_lat, routeDate[0].stop_long);
+                var end_position = new google.maps.LatLng(routeDate[1].stop_lat, routeDate[1].stop_long);
+                var request = {
+                    origin: start_position,
+                    destination: end_position,
+                    travelMode: google.maps.TravelMode["TRANSIT"],
+                    provideRouteAlternatives :false,
+                    transitOptions: {
+                        modes: ['BUS'],
+                    },
+
+                };
+                directionsService.route(request, function(response, status) {
+                    if (status == 'OK') {
+                        console.log(response);
+                        savePlanToJson(response);
+                        showRoutedetail(response)
+                    }
+                });
+            });
+        }
+    </script>
+
+    <script>
+        function savePlanToJson(){
+            var start = document.forms["bus_stop"]["start_stop"].value;
+            var end = document.forms["bus_stop"]["end_stop"].value;
+            let url = 'route/'+'?start_stop='+start+'&end_stop='+end;
+            var jsonData = {};
+            var locations = {
+                startStop :  start,
+                endStop : end,
+            }
+            console.log(locations);
+            str = JSON.stringify(locations);
+            console.log(str);
+            localStorage.setItem(url,str);
+        }
+
+        function loadPlanFromJson(){
+            var target = document.getElementById("plan_container");
+            var key;
+            for(var i=localStorage.length - 1 ; i >=0; i--){
+                (function(i){
+                var url = localStorage.key(i);
+                var str=localStorage.getItem(url); 
+                var locations=JSON.parse(str); 
+
+                var container = document.createElement("button");
+                console.log(url);
+                container.addEventListener("click", function(){ showPlan(url);});        
+                writeLine("start stop: "+ locations.startStop, container);
+                writeLine("end stop: "+ locations.endStop, container);
+                target.appendChild(container);   
+
+                var deleteButton = document.createElement("button");
+                deleteButton.addEventListener("click", function(){ deletePlan(url);});
+                writeLine("DELETE", deleteButton);
+                target.appendChild(deleteButton);
+                }(i));
+            }
+        }
+
+        function deletePlan(url){
+            localStorage.removeItem(url);
+            location.reload();
+        }
+    </script>
+
+    <script>
+        function showPlan(url){
+            // console.log(url);
+            fetch(url, {
+                method:'GET'}).then(function(response) {
+                    return response.json();
+                })
+            .then(function(routeDate){
+                console.log(routeDate);
+                //map clear
+                var mapProp = {
+                    center: new google.maps.LatLng(53.3472, -6.2592),
+                    zoom: 12,
+                };
+                map = new google.maps.Map(document.getElementById("map"), mapProp);
+                
+                directionsRenderer.setMap(map);
+                directionsRenderer.setPanel(document.getElementById("sidebar"));
+                var start_position = new google.maps.LatLng(routeDate[0].stop_lat, routeDate[0].stop_long);
+                var end_position = new google.maps.LatLng(routeDate[1].stop_lat, routeDate[1].stop_long);
+                var request = {
+                    origin: start_position,
+                    destination: end_position,
+                    travelMode: google.maps.TravelMode["TRANSIT"],
+                    provideRouteAlternatives :false,
+                    transitOptions: {
+                        modes: ['BUS'],
+                    },
+
+                };
+                directionsService.route(request, function(response, status) {
+                    if (status == 'OK') {
+                        console.log(response);
+                        directionsRenderer.setDirections(response);
+                        showRoutedetail(response, "plan_detail_container")
+                    }
+                });
+            });
+        }
+    </script>
+
+    <script>
+        // Submit the starting and ending stations and return to the navigation route
+        function markBusRoute( ){
+            var start = document.forms["bus_stop"]["start_stop"].value;
+            console.log(start);
+            var end = document.forms["bus_stop"]["end_stop"].value;
+            console.log(end);
+            let url = 'route/'+'?start_stop='+start+'&end_stop='+end;
+            // console.log(url);
+            fetch(url, {
+                method:'GET'}).then(function(response) {
+                    return response.json();
+                })
+            .then(function(routeDate){
+                console.log(routeDate);
+                //map clear
+                var mapProp = {
+                    center: new google.maps.LatLng(53.3472, -6.2592),
+                    zoom: 12,
+                };
+                map = new google.maps.Map(document.getElementById("map"), mapProp);
+                
+                directionsRenderer.setMap(map);
+                directionsRenderer.setPanel(document.getElementById("sidebar"));
+                var start_position = new google.maps.LatLng(routeDate[0].stop_lat, routeDate[0].stop_long);
+                var end_position = new google.maps.LatLng(routeDate[1].stop_lat, routeDate[1].stop_long);
+                var request = {
+                    origin: start_position,
+                    destination: end_position,
+                    travelMode: google.maps.TravelMode["TRANSIT"],
+                    provideRouteAlternatives :false,
+                    transitOptions: {
+                        modes: ['BUS'],
+                    },
+
+                };
+                directionsService.route(request, function(response, status) {
+                    if (status == 'OK') {
+                        console.log(response);
+                        directionsRenderer.setDirections(response);
+                        showRoutedetail(response, "detail_container")
+                    }
+                });
+            });
+        }
+    </script>
+
+    <script>
+        function showRoutedetail(response, element){
+            var myRoute = response.routes[0].legs[0];
+            var locations = new Array();
+            var total_distance = 0, total_duration = 0;
+            // var jsonData = {};
+            for (var i = 0; i < myRoute.steps.length; i++) {
+                if(myRoute.steps[i].travel_mode == "TRANSIT")
+                {
+                    var location={
+                        startStop : myRoute.steps[i].transit.departure_stop.name,
+                        endStop : myRoute.steps[i].transit.arrival_stop.name,
+                        line : myRoute.steps[i].transit.line.short_name,
+                        distance : myRoute.steps[i].distance.text,
+                        duration : myRoute.steps[i].duration.text,
+                    }
+                    total_duration += Math.round(myRoute.steps[i].duration.value/60);
+                    total_distance += Math.round(myRoute.steps[i].distance.value/1000);
+                    // console.log(location);
+                    locations.push(location)
+                }
+            }
+            console.log(locations);
+
+
+            var target = document.getElementById(element);
+            target.innerHTML = "";
+            var text = "Total distance: " + total_distance + " kilometres\n" + "Total duration: " + total_duration + " minnuites";
+            writeLine(text, target);
+            for (var i = 0; i< locations.length; i++){
+                writeLine("The "+ (i+1) + " leg of the journey", target)
+                writeLine("departure stop: "+locations[i].startStop, target)
+                writeLine("arrival stop: "+ locations[i].endStop, target)
+                writeLine("bus line: "+ locations[i].line, target)
+                writeLine("distance: "+ locations[i].distance, target)
+                writeLine("duration: "+ locations[i].duration, target)
+            }
+            // jsonData["1"] = locations;
+            // console.log(JSON.stringify(jsonData));
+        }
+    </script>
+
+    <script>
+        function writeLine(text ,target){
+            var container = document.createElement("div");
+            var node = document.createTextNode(text);
+            container.appendChild(node);
+            target.appendChild(container);
+        }
+    </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBHY3W-xvNE-42BipvMY_-lu4aKdnB5xn4&callback=initMap&libraries=&v=weekly" async>
+    </script>
+</head>
+
+<body>
+    <form action="route/" name = "bus_stop" >
+        <input list="start_stop" name="start_stop" placeholder="From" />
+        <datalist id="start_stop"></datalist>
+        <input list="end_stop" name="end_stop" placeholder="To" />
+        <datalist id="end_stop"></datalist>
+        <input id="submit" type="button" value="submit" style="height: 3em; margin: 0.5em;">
+        <input id="save" type="button" value="save" style="height: 3em; margin: 0.5em;">
+    </form>
+
+    <div id="plan_container" style="border-style: solid;">plan_panel </div>
+
+    <div id="plan_detail_container" style="border-style: solid;">plan_detail_container </div>
+
+    <div id="detail_container" style="border-style: solid;">detail_panel</div>
+
+    <div id="container">
+        <div id="map" style="width:1020px;height:680px;"></div>
+        <div id="sidebar"></div>
+    </div>
+
+    
+</body>
+
+</html>
