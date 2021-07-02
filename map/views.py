@@ -18,6 +18,8 @@ def BusStation(request):
 def RouteDirection(request):
 	start_stop = request.GET.get("start_stop","")
 	end_stop = request.GET.get("end_stop","")
+	date = request.GET.get("date","")
+	time = request.GET.get("time","")
 	ret_start_stop = BusStops.objects.values('stop_name','stop_lat','stop_long').filter(stop_name = start_stop).distinct()
 	ret_end_stop = BusStops.objects.values('stop_name','stop_lat','stop_long').filter(stop_name = end_stop).distinct()
 	ret = chain(ret_start_stop, ret_end_stop)

@@ -18,6 +18,8 @@
             directionsService = new google.maps.DirectionsService();
             directionsRenderer = new google.maps.DirectionsRenderer();
             // Bus stop option initialization
+            // time date option initialization
+            initDateTime();
             initBusStops();
             iniEventListener();
             loadPlanFromJson();
@@ -25,7 +27,32 @@
     </script>
 
     <script>
-        var busStops;
+        var dateArray = new Array();
+        var timeArray = new Array();
+        function initDateTime(){
+            var myDate = new Date();
+            var date = document.getElementById('date');
+            for(var i =0; i <5; i++){
+                var newDate=new Date(myDate.getTime()+i*1000*60*60*24);
+                var str =newDate.getDate() + "/" + (newDate.getMonth() + 1) + "/" +newDate.getYear();
+                var dateOption=document.createElement("option");
+                dateOption.setAttribute("value", str);
+                date.appendChild(dateOption);
+                dateArray.push(str);
+            }
+            var time = document.getElementById('time');
+            for(var j= 0; j <= 23; j++){
+                var str = j + ":00"
+                var timeOption = document.createElement("option");
+                timeOption.setAttribute("value", str);
+                time.appendChild(timeOption);
+                timeArray.push(str);
+            }            
+        }
+    </script>
+
+    <script>
+        var busStopsArray = new Array();
         function initBusStops(){
             // read bus station data from server
             fetch("busstation", {
@@ -47,6 +74,7 @@
                     var endOption=document.createElement("option")
                     endOption.setAttribute("value",element.stop_name);
                     endStop.appendChild(endOption);
+                    busStopsArray.push(element.stop_name);
                 });
                 console.log(busData);
             });
@@ -57,6 +85,8 @@
         function iniEventListener(){
             var submit = document.getElementById("submit").addEventListener("click", markBusRoute);
             var save = document.getElementById("save").addEventListener("click", savePlanToJson);
+            var plan = document.getElementById("plan").addEventListener("click", showPlanPage);
+            var search = document.getElementById("search").addEventListener("click", showSearchPage);
         }
     </script>
 
@@ -101,11 +131,15 @@
         function savePlanToJson(){
             var start = document.forms["bus_stop"]["start_stop"].value;
             var end = document.forms["bus_stop"]["end_stop"].value;
-            let url = 'route/'+'?start_stop='+start+'&end_stop='+end;
+            var date = document.forms["bus_stop"]["date"].value;
+            var time = document.forms["bus_stop"]["time"].value;
+            let url = 'route/'+'?start_stop='+start+'&end_stop='+end +'&date='+date +'&time='+time;
             var jsonData = {};
             var locations = {
                 startStop :  start,
                 endStop : end,
+                date : date,
+                time : time
             }
             console.log(locations);
             str = JSON.stringify(locations);
@@ -127,6 +161,8 @@
                 container.addEventListener("click", function(){ showPlan(url);});        
                 writeLine("start stop: "+ locations.startStop, container);
                 writeLine("end stop: "+ locations.endStop, container);
+                writeLine("end stop: "+ locations.date, container);
+                writeLine("end stop: "+ locations.time, container);
                 target.appendChild(container);   
 
                 var deleteButton = document.createElement("button");
@@ -139,7 +175,10 @@
 
         function deletePlan(url){
             localStorage.removeItem(url);
-            location.reload();
+            // location.reload();
+            document.getElementById("plan_container").innerHTML=""
+            loadPlanFromJson();
+            showPlanPage();
         }
     </script>
 
@@ -188,10 +227,10 @@
         // Submit the starting and ending stations and return to the navigation route
         function markBusRoute( ){
             var start = document.forms["bus_stop"]["start_stop"].value;
-            console.log(start);
             var end = document.forms["bus_stop"]["end_stop"].value;
-            console.log(end);
-            let url = 'route/'+'?start_stop='+start+'&end_stop='+end;
+            var date = document.forms["bus_stop"]["date"].value;
+            var time = document.forms["bus_stop"]["time"].value;
+            let url = 'route/'+'?start_stop='+start+'&end_stop='+end +'&date='+date +'&time='+time;
             // console.log(url);
             fetch(url, {
                 method:'GET'}).then(function(response) {
@@ -253,12 +292,11 @@
                     locations.push(location)
                 }
             }
-            console.log(locations);
-
+            // console.log(locations);
 
             var target = document.getElementById(element);
             target.innerHTML = "";
-            var text = "Total distance: " + total_distance + " kilometres\n" + "Total duration: " + total_duration + " minnuites";
+            var text ="Total distance: " + total_distance + " kilometres\n" + "Total duration: " + total_duration + " minnuites";
             writeLine(text, target);
             for (var i = 0; i< locations.length; i++){
                 writeLine("The "+ (i+1) + " leg of the journey", target)
@@ -270,6 +308,34 @@
             }
             // jsonData["1"] = locations;
             // console.log(JSON.stringify(jsonData));
+        }
+    </script>
+
+    <script>
+
+        function showPlanPage(){
+            var plan_container = document.getElementById("plan_container");
+            var plan_detail_container = document.getElementById("plan_detail_container");
+            var detail_container = document.getElementById("detail_container");
+            var search_form = document.getElementById("search_form");
+            detail_container.style.display="none";
+            search_form.style.display="none";
+            plan_container.style.display="block";
+            plan_detail_container.style.display="block";
+            // clear plan page then loadPlanFromJson();
+            document.getElementById("plan_container").innerHTML=""
+            loadPlanFromJson();
+            
+        }
+        function showSearchPage(){
+            var plan_container = document.getElementById("plan_container");
+            var plan_detail_container = document.getElementById("plan_detail_container");
+            var detail_container = document.getElementById("detail_container");
+            var search_form = document.getElementById("search_form");
+            detail_container.style.display="block";
+            search_form.style.display="block";
+            plan_container.style.display="none";
+            plan_detail_container.style.display="none";
         }
     </script>
 
@@ -287,20 +353,28 @@
 </head>
 
 <body>
-    <form action="route/" name = "bus_stop" >
+    <input id="search" type="button" value="search route" style="height: 3em; margin: 0.5em;">
+
+    <input id="plan" type="button" value="my plan" style="height: 3em; margin: 0.5em;">
+
+    <form action="route/" name = "bus_stop" id="search_form">
         <input list="start_stop" name="start_stop" placeholder="From" />
         <datalist id="start_stop"></datalist>
         <input list="end_stop" name="end_stop" placeholder="To" />
         <datalist id="end_stop"></datalist>
+        <input list="date" name="date" placeholder="date"/>
+        <datalist id="date"></datalist>
+        <input list="time" name="time" placeholder="time"/>
+        <datalist id="time"></datalist>        
         <input id="submit" type="button" value="submit" style="height: 3em; margin: 0.5em;">
         <input id="save" type="button" value="save" style="height: 3em; margin: 0.5em;">
     </form>
 
-    <div id="plan_container" style="border-style: solid;">plan_panel </div>
+    <div id="detail_container" style="border-style: solid;"></div>
 
-    <div id="plan_detail_container" style="border-style: solid;">plan_detail_container </div>
+    <div id="plan_container" style="border-style: solid; display: none;"> </div>
 
-    <div id="detail_container" style="border-style: solid;">detail_panel</div>
+    <div id="plan_detail_container" style="border-style: solid; display: none;"> </div>
 
     <div id="container">
         <div id="map" style="width:1020px;height:680px;"></div>
