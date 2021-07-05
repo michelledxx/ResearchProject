@@ -17,6 +17,8 @@ from django.contrib import admin
 from django.urls import path, include
 from users import views as v_users
 from django.contrib.auth import views as a_views
+from users import views as v_users
+from favourites import views as f_views
 
 urlpatterns = [
     path('map/', include('map.urls')),
@@ -24,5 +26,8 @@ urlpatterns = [
     path('users/', v_users.users, name='users'),
     path('login/', a_views.LoginView.as_view(template_name='users/login.html'),name='login'),
     path('test/', v_users.extra, name='test'),
+    path('mystations/', f_views.stations, name='mystations'),
+    path('check_auth/', f_views.check_auth, name='check_auth'),
+    path('check_auth/show_favs', f_views.show_favs, name='check_auth/show_favs')
    #path('test/', a_views.LoginView.as_view(template_name='users/test.html'), name='test'),
 ]

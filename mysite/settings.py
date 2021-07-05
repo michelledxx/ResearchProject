@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'weather',
     'django_crontab',
     'map',
-    'users'
+    'users',
+    'favourites'
 ]
 
 MIDDLEWARE = [

@@ -70,3 +70,8 @@ class my_plans(models.Model):
 
     def __str__(self):
         return self.user.name + ": " + self.start_stop + self.end_stop + self.time
+
+class my_stations(models.Model):
+    id = models.AutoField(primary_key=True, auto_created=True)
+    stop_id = models.TextField()
+    user = models.ForeignKey(MyUser, on_delete=models.CASCADE)
