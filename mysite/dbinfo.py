@@ -1,5 +1,5 @@
-myhost="dubbusdb.cayveqvorwmz.eu-west-1.rds.amazonaws.com"
-mypasswd="t8dubbus"
+myhost="heroku.cocoldeaofkv.us-east-2.rds.amazonaws.com"
+mypasswd="dublinbus"
 myuser="admin"
 mydatabase="dubbusdb"
 mycharset="utf8mb4"
